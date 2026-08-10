@@ -1,0 +1,30 @@
+{
+  "name": "Aroko.StoreRelease.Epic",
+  "rootNamespace": "Aroko.StoreRelease.Runtime.Epic",
+  "references": [
+    "Aroko.StoreRelease.Runtime",
+    "com.playeveryware.eos",
+    "com.playeveryware.eos.core",
+    "com.Epic.OnlineServices"
+  ],
+  "includePlatforms": [
+    "Editor",
+    "WindowsStandalone64"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "AROKO_SRT_EOS_AVAILABLE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.playeveryware.eos",
+      "expression": "0.0.0",
+      "define": "AROKO_SRT_EOS_AVAILABLE"
+    }
+  ],
+  "noEngineReferences": false
+}

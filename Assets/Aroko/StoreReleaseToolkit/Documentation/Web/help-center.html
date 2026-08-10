@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Release Toolkit - Help Center</title>
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<main class="docs-shell">
+  <header class="hero"><span class="eyebrow">Help Center</span><h1>Build-only troubleshooting</h1></header>
+
+  <section class="doc-section" id="diagnostics">
+    <h2>Diagnostics</h2>
+    <p>Refresh Diagnostics after changing packages, profiles, identifiers, templates, scenes, or output rules. Errors block builds; warnings identify unverified SDK versions or incomplete inactive profiles.</p>
+  </section>
+
+  <section class="doc-section" id="runbook">
+    <h2>Build runbook</h2>
+    <ol><li>Compile.</li><li>Run EditMode tests.</li><li>Validate.</li><li>Build.</li><li>Inspect the report and output.</li></ol>
+  </section>
+
+  <section class="doc-section" id="command-builder">
+    <h2>CI command builder</h2>
+    <pre><code>-executeMethod Aroko.StoreRelease.Editor.StoreReleaseCli.Run
+-srtAction build
+-srtProfile epic-live
+-srtVersion 1.0.0
+-srtReport Builds/report.json</code></pre>
+  </section>
+
+  <section class="doc-section" id="faq">
+    <h2>FAQ</h2>
+    <h3>Does the toolkit contact Steam or Epic?</h3><p>The Editor performs local setup, validation, and builds only. It never uploads or signs into a developer account.</p>
+    <h3>Why are vendor SDKs still required?</h3><p>Store-specific packaging and runtime achievements use the selected vendor integration while excluding the inactive one.</p>
+    <h3>How are achievements delivered?</h3><p>The game runtime uses the selected store provider and the launched player's store session. Pending calls are saved and retried.</p>
+  </section>
+
+  <section class="doc-section" id="glossary">
+    <h2>Glossary</h2>
+    <p><strong>Profile:</strong> a store, channel, build mode, and output preset.</p>
+    <p><strong>Build handoff:</strong> the finished local folder produced for a separate delivery process.</p>
+  </section>
+
+  <section class="doc-section" id="support-bundle">
+    <h2>Support bundle</h2>
+    <p>Include Unity version, active profile, SDK versions, validation codes, report path, and relevant Console errors. Do not include private project identifiers unless required by your own support process.</p>
+  </section>
+
+  <nav><a href="setup-guide.html">Build guide</a> &middot; <a href="api-reference.html">Runtime and Editor API</a></nav>
+</main>
+<script src="docs.js"></script>
+</body>
+</html>

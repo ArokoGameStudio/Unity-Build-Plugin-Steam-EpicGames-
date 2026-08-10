@@ -1,0 +1,18 @@
+Store Release Toolkit does not redistribute the following optional dependencies.
+
+Steamworks.NET
+Repository: https://github.com/rlabrecque/Steamworks.NET
+License: MIT
+
+Steamworks SDK
+Provider: Valve Corporation
+Terms: Steamworks SDK Access Agreement
+Documentation: https://partner.steamgames.com/doc/sdk
+
+EOS Plugin for Unity
+Repository: https://github.com/PlayEveryWare/eos_plugin_for_unity
+License and third-party notices are supplied with that package.
+
+Epic Online Services SDK
+Provider: Epic Games, Inc.
+Terms are supplied through the Epic Developer Portal.

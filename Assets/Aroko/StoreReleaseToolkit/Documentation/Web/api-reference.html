@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Release Toolkit - Runtime and Editor API</title>
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<main class="docs-shell">
+  <header class="hero" id="quickstart">
+    <span class="eyebrow">Runtime and Editor API</span>
+    <h1>One achievement call for Steam and Epic</h1>
+    <pre><code>using Aroko.StoreRelease.Runtime;
+StoreAchievements.Unlock(GameAchievementIds.FirstWin);</code></pre>
+    <p>The selected build supplies the matching provider. Unlocks are persisted before delivery, provider startup and delivery are retried automatically, and receipts are isolated per store environment.</p>
+  </header>
+
+  <section class="doc-section" id="achievements">
+    <h2>StoreAchievements.Unlock</h2>
+    <p>Pass a project-owned achievement ID configured identically in Steam and Epic. The API never requires game code to reference a vendor SDK.</p>
+    <pre><code>public static class GameAchievementIds
+{
+    public const string FirstWin = "first-win";
+}</code></pre>
+  </section>
+
+  <section class="doc-section" id="build-requests">
+    <h2>StoreBuildRequest</h2>
+    <p>A request contains only the cloned profile, version, and optional output path.</p>
+    <pre><code>var request = new StoreBuildRequest(profile, "1.2.3", "Builds/Steam/1.2.3");
+StoreOperationReport report = StoreBuildCoordinator.Build(request);</code></pre>
+  </section>
+
+  <section class="doc-section" id="settings">
+    <h2>StoreReleaseProjectSettings</h2>
+    <p>Contains the executable, icon, public store identifiers, Epic packaging templates, profiles, and Epic environments.</p>
+  </section>
+
+  <section class="doc-section" id="results">
+    <h2>StoreOperationReport</h2>
+    <p>Reports success, validation issues, resolved output, and a local diagnostic log.</p>
+  </section>
+
+  <section class="doc-section" id="extension-points">
+    <h2>IStoreEditorAdapter</h2>
+    <p>Custom editor adapters can validate a profile and postprocess a completed player. Storefront delivery and developer-account authentication are outside this interface.</p>
+  </section>
+
+  <nav><a href="setup-guide.html">Build guide</a> &middot; <a href="help-center.html">Help center</a></nav>
+</main>
+<script src="docs.js"></script>
+</body>
+</html>

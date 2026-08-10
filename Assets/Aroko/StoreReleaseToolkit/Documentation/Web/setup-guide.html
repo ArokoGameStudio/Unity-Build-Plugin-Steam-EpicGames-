@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Release Toolkit - Build Guide</title>
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<main class="docs-shell">
+  <header class="hero" id="start-here">
+    <span class="eyebrow">Store Release Toolkit</span>
+    <h1>From store setup to a clean local build</h1>
+    <p>Configure Steam or Epic packaging, validate the project, and create a Windows x64 folder for separate storefront delivery.</p>
+  </header>
+
+  <section class="doc-section" id="setup-workflow">
+    <h2>1. Setup</h2>
+    <p>Open <strong>Window &gt; Store Release Toolkit</strong>. The Setup page detects Steamworks.NET and the EOS Plugin. If one is missing, use its <strong>Download</strong> button to install the supported package into the current project.</p>
+    <ul>
+      <li>Set the executable, icon, default version, and output templates.</li>
+      <li>Set the public Steam App ID for Steam builds.</li>
+      <li>Set Epic product, sandbox, deployment, EOS client, encryption, templates, and bootstrapper values.</li>
+      <li>Use the built-in actions to create project-local EOS templates.</li>
+    </ul>
+    <p>The toolkit never requests a developer username, password, or storefront credential.</p>
+  </section>
+
+  <section class="doc-section" id="achievement-api">
+    <h2>2. Add achievement calls</h2>
+    <p>Define project-owned IDs that match Steam and Epic, then use the store-neutral runtime API.</p>
+    <pre><code>using Aroko.StoreRelease.Runtime;
+StoreAchievements.Unlock(GameAchievementIds.FirstWin);</code></pre>
+    <p>Pending unlocks persist and retry automatically through the provider selected for the build.</p>
+  </section>
+
+  <section class="doc-section" id="build-workflow">
+    <h2>3. Validate and build</h2>
+    <ol>
+      <li>Select a Steam or Epic profile and version.</li>
+      <li>Review the resolved output folder.</li>
+      <li>Run <strong>Validate Configuration</strong>.</li>
+      <li>Run <strong>Build Windows x64</strong>.</li>
+      <li>Inspect the report and generated folder.</li>
+    </ol>
+    <p>During the build, the inactive vendor plugin is temporarily disabled and restored afterward. The output is checked for inactive-store contamination.</p>
+  </section>
+
+  <section class="doc-section" id="build-checklist">
+    <h2>4. Build checklist</h2>
+    <ul>
+      <li>Required vendor SDK is detected.</li>
+      <li>Version, scenes, icon, executable, and output path are correct.</li>
+      <li>Epic packaging values or Steam App ID validate.</li>
+      <li>Diagnostics has no blocking issues.</li>
+      <li>The build contains only the selected store integration.</li>
+    </ul>
+  </section>
+
+  <section class="doc-section" id="ci">
+    <h2>5. CI</h2>
+    <pre><code>-executeMethod Aroko.StoreRelease.Editor.StoreReleaseCli.Run
+-srtAction validate|build
+-srtProfile &lt;profile-id&gt;
+-srtVersion &lt;version&gt;
+-srtReport &lt;report.json&gt;</code></pre>
+    <p>Archive the generated folder as the CI artifact. The toolkit has no storefront-delivery action.</p>
+  </section>
+
+  <nav><a href="api-reference.html">Runtime and Editor API</a> &middot; <a href="help-center.html">Help center</a></nav>
+</main>
+<script src="docs.js"></script>
+</body>
+</html>

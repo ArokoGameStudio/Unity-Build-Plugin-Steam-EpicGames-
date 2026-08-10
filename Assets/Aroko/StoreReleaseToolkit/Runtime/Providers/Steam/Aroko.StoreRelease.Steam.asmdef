@@ -1,0 +1,28 @@
+{
+  "name": "Aroko.StoreRelease.Steam",
+  "rootNamespace": "Aroko.StoreRelease.Runtime.Steam",
+  "references": [
+    "Aroko.StoreRelease.Runtime",
+    "com.rlabrecque.steamworks.net"
+  ],
+  "includePlatforms": [
+    "Editor",
+    "WindowsStandalone64"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "AROKO_SRT_STEAMWORKS_AVAILABLE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.rlabrecque.steamworks.net",
+      "expression": "0.0.0",
+      "define": "AROKO_SRT_STEAMWORKS_AVAILABLE"
+    }
+  ],
+  "noEngineReferences": false
+}
