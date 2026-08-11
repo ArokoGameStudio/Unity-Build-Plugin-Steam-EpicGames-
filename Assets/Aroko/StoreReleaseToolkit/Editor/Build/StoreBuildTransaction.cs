@@ -28,8 +28,37 @@ namespace Aroko.StoreRelease.Editor.Build
         private sealed class TransactionState
         {
             public string OriginalBundleVersion = string.Empty;
+            public bool CreatedTemporaryEosWindowsConfig;
             public bool RestorationCompleted;
         }
+
+        private const string EosWindowsConfigAssetPath =
+            "Assets/StreamingAssets/EOS/eos_windows_config.json";
+
+        private const string TemporaryEosWindowsConfig =
+            "{\n" +
+            "  \"deployment\": {\n" +
+            "    \"SandboxId\": { \"Value\": \"00000000-0000-0000-0000-000000000002\" },\n" +
+            "    \"DeploymentId\": \"00000000-0000-0000-0000-000000000001\"\n" +
+            "  },\n" +
+            "  \"clientCredentials\": {\n" +
+            "    \"ClientId\": \"steam-build-placeholder\",\n" +
+            "    \"ClientSecret\": \"steam-build-placeholder\",\n" +
+            "    \"EncryptionKey\": \"1111111111111111111111111111111111111111111111111111111111111111\"\n" +
+            "  },\n" +
+            "  \"isServer\": false,\n" +
+            "  \"platformOptionsFlags\": \"DisableOverlay\",\n" +
+            "  \"authScopeOptionsFlags\": \"BasicProfile\",\n" +
+            "  \"integratedPlatformManagementFlags\": \"Disabled\",\n" +
+            "  \"tickBudgetInMilliseconds\": 0,\n" +
+            "  \"taskNetworkTimeoutSeconds\": 0.0,\n" +
+            "  \"threadAffinity\": null,\n" +
+            "  \"alwaysSendInputToOverlay\": false,\n" +
+            "  \"initialButtonDelayForOverlay\": 0.0,\n" +
+            "  \"repeatButtonDelayForOverlay\": 0.0,\n" +
+            "  \"toggleFriendsButtonCombination\": \"SpecialLeft\",\n" +
+            "  \"schemaVersion\": \"1.0\"\n" +
+            "}\n";
 
         private static readonly string[] SteamPluginTokens =
         {
@@ -78,6 +107,10 @@ namespace Aroko.StoreRelease.Editor.Build
             try
             {
                 PlayerSettings.bundleVersion = request.Version;
+                if (request.Profile.Store == EditorStorePlatform.Steam)
+                {
+                    transaction.EnsureTemporaryEosWindowsConfig();
+                }
                 transaction.DisableInactivePlugins(request.Profile.Store);
                 WriteJournal(transactionState);
                 return transaction;
@@ -141,6 +174,23 @@ namespace Aroko.StoreRelease.Editor.Build
             }
         }
 
+        private void EnsureTemporaryEosWindowsConfig()
+        {
+            string absolutePath = GetEosWindowsConfigAbsolutePath();
+            if (File.Exists(absolutePath))
+            {
+                return;
+            }
+
+            state.CreatedTemporaryEosWindowsConfig = true;
+            WriteJournal(state);
+            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath));
+            File.WriteAllText(
+                absolutePath,
+                TemporaryEosWindowsConfig,
+                new UTF8Encoding(false));
+        }
+
         private static void RecoverIfNeeded()
         {
             if (!File.Exists(JournalPath))
@@ -201,6 +251,20 @@ namespace Aroko.StoreRelease.Editor.Build
                 failures.Add(new InvalidOperationException(
                     "Could not restore the original bundle version.",
                     exception));
+            }
+
+            if (transactionState.CreatedTemporaryEosWindowsConfig)
+            {
+                try
+                {
+                    DeleteTemporaryEosWindowsConfig();
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new InvalidOperationException(
+                        "Could not remove the temporary EOS Windows configuration.",
+                        exception));
+                }
             }
 
             if (pluginFilters == null)
@@ -335,6 +399,35 @@ namespace Aroko.StoreRelease.Editor.Build
             catch
             {
                 // Cleanup is retried on the next editor update.
+            }
+        }
+
+        private static string GetEosWindowsConfigAbsolutePath()
+        {
+            return Path.GetFullPath(Path.Combine(
+                StoreBuildCoordinator.ProjectRoot,
+                EosWindowsConfigAssetPath.Replace(
+                    '/', Path.DirectorySeparatorChar)));
+        }
+
+        private static void DeleteTemporaryEosWindowsConfig()
+        {
+            string path = GetEosWindowsConfigAbsolutePath();
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            string metaPath = path + ".meta";
+            if (File.Exists(metaPath))
+            {
+                File.Delete(metaPath);
+            }
+
+            if (File.Exists(path) || File.Exists(metaPath))
+            {
+                throw new IOException(
+                    "The temporary EOS configuration or its metadata still exists.");
             }
         }
 

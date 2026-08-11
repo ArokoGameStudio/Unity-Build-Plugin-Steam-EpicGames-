@@ -231,6 +231,10 @@ namespace Aroko.StoreRelease.Editor.Build
                     else
                     {
                         RemoveNonShippingArtifacts(outputDirectory, settings.ExecutableName);
+                        RemoveInactiveStoreConfiguration(
+                            outputDirectory,
+                            settings.ExecutableName,
+                            request.Profile.Store);
                         Adapters[request.Profile.Store].Postprocess(
                             request, settings, report.OutputPath);
                         RemoveInactiveManagedAssemblies(
@@ -540,6 +544,41 @@ namespace Aroko.StoreRelease.Editor.Build
                 {
                     Directory.Delete(path, true);
                 }
+            }
+        }
+
+        private static void RemoveInactiveStoreConfiguration(
+            string outputDirectory,
+            string executableName,
+            EditorStorePlatform activeStore)
+        {
+            if (activeStore != EditorStorePlatform.Steam)
+            {
+                return;
+            }
+
+            string eosDirectory = Path.Combine(
+                outputDirectory,
+                Path.GetFileNameWithoutExtension(executableName) + "_Data",
+                "StreamingAssets",
+                "EOS");
+            foreach (string fileName in new[]
+                     {
+                         EosConfigurationUtility.ProductConfigFileName,
+                         EosConfigurationUtility.WindowsConfigFileName
+                     })
+            {
+                string path = Path.Combine(eosDirectory, fileName);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            if (Directory.Exists(eosDirectory) &&
+                !Directory.EnumerateFileSystemEntries(eosDirectory).Any())
+            {
+                Directory.Delete(eosDirectory);
             }
         }
 
