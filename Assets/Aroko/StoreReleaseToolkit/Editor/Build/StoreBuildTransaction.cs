@@ -29,11 +29,17 @@ namespace Aroko.StoreRelease.Editor.Build
         {
             public string OriginalBundleVersion = string.Empty;
             public bool CreatedTemporaryEosWindowsConfig;
+            public bool TrackGeneratedEosState;
+            public bool StreamingAssetsDirectoryExisted;
+            public bool EosDirectoryExisted;
+            public bool EosSteamConfigExisted;
             public bool RestorationCompleted;
         }
 
         private const string EosWindowsConfigAssetPath =
             "Assets/StreamingAssets/EOS/eos_windows_config.json";
+        private const string EosSteamConfigAssetPath =
+            "Assets/StreamingAssets/EOS/eos_steam_config.json";
 
         private const string TemporaryEosWindowsConfig =
             "{\n" +
@@ -101,6 +107,7 @@ namespace Aroko.StoreRelease.Editor.Build
             {
                 OriginalBundleVersion = PlayerSettings.bundleVersion
             };
+            CaptureGeneratedEosState(transactionState);
             WriteJournal(transactionState);
 
             var transaction = new StoreBuildTransaction(transactionState);
@@ -112,6 +119,33 @@ namespace Aroko.StoreRelease.Editor.Build
                     transaction.EnsureTemporaryEosWindowsConfig();
                 }
                 transaction.DisableInactivePlugins(request.Profile.Store);
+                WriteJournal(transactionState);
+                return transaction;
+            }
+            catch
+            {
+                transaction.Dispose();
+                throw;
+            }
+        }
+
+        public static StoreBuildTransaction BeginNormalBuild()
+        {
+            RecoverIfNeeded();
+            var transactionState = new TransactionState
+            {
+                // A normal build does not change the player version. Null prevents
+                // cleanup from touching PlayerSettings and creating a project diff.
+                OriginalBundleVersion = null
+            };
+            CaptureGeneratedEosState(transactionState);
+            WriteJournal(transactionState);
+
+            var transaction = new StoreBuildTransaction(transactionState);
+            try
+            {
+                transaction.EnsureTemporaryEosWindowsConfig();
+                transaction.DisableInactivePlugins(null);
                 WriteJournal(transactionState);
                 return transaction;
             }
@@ -136,11 +170,19 @@ namespace Aroko.StoreRelease.Editor.Build
             DeleteJournalFiles();
         }
 
-        private void DisableInactivePlugins(EditorStorePlatform activeStore)
+        private void DisableInactivePlugins(EditorStorePlatform? activeStore)
         {
-            string[] inactiveTokens = activeStore == EditorStorePlatform.Steam
-                ? EpicPluginTokens
-                : SteamPluginTokens;
+            string[] inactiveTokens;
+            if (!activeStore.HasValue)
+            {
+                inactiveTokens = SteamPluginTokens.Concat(EpicPluginTokens).ToArray();
+            }
+            else
+            {
+                inactiveTokens = activeStore.Value == EditorStorePlatform.Steam
+                    ? EpicPluginTokens
+                    : SteamPluginTokens;
+            }
 
             foreach (string assetPath in AssetDatabase.GetAllAssetPaths())
             {
@@ -242,15 +284,18 @@ namespace Aroko.StoreRelease.Editor.Build
             }
 
             var failures = new List<Exception>();
-            try
+            if (transactionState.OriginalBundleVersion != null)
             {
-                PlayerSettings.bundleVersion = transactionState.OriginalBundleVersion ?? string.Empty;
-            }
-            catch (Exception exception)
-            {
-                failures.Add(new InvalidOperationException(
-                    "Could not restore the original bundle version.",
-                    exception));
+                try
+                {
+                    PlayerSettings.bundleVersion = transactionState.OriginalBundleVersion;
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new InvalidOperationException(
+                        "Could not restore the original bundle version.",
+                        exception));
+                }
             }
 
             if (transactionState.CreatedTemporaryEosWindowsConfig)
@@ -263,6 +308,26 @@ namespace Aroko.StoreRelease.Editor.Build
                 {
                     failures.Add(new InvalidOperationException(
                         "Could not remove the temporary EOS Windows configuration.",
+                        exception));
+                }
+            }
+
+            if (transactionState.TrackGeneratedEosState)
+            {
+                try
+                {
+                    if (!transactionState.EosSteamConfigExisted)
+                    {
+                        DeleteAssetFileAndMeta(GetAbsoluteAssetPath(
+                            EosSteamConfigAssetPath));
+                    }
+
+                    CleanupGeneratedEosDirectories(transactionState);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new InvalidOperationException(
+                        "Could not restore generated EOS configuration state.",
                         exception));
                 }
             }
@@ -404,15 +469,24 @@ namespace Aroko.StoreRelease.Editor.Build
 
         private static string GetEosWindowsConfigAbsolutePath()
         {
+            return GetAbsoluteAssetPath(EosWindowsConfigAssetPath);
+        }
+
+        private static string GetAbsoluteAssetPath(string assetPath)
+        {
             return Path.GetFullPath(Path.Combine(
                 StoreBuildCoordinator.ProjectRoot,
-                EosWindowsConfigAssetPath.Replace(
+                assetPath.Replace(
                     '/', Path.DirectorySeparatorChar)));
         }
 
         private static void DeleteTemporaryEosWindowsConfig()
         {
-            string path = GetEosWindowsConfigAbsolutePath();
+            DeleteAssetFileAndMeta(GetEosWindowsConfigAbsolutePath());
+        }
+
+        private static void DeleteAssetFileAndMeta(string path)
+        {
             if (File.Exists(path))
             {
                 File.Delete(path);
@@ -428,6 +502,45 @@ namespace Aroko.StoreRelease.Editor.Build
             {
                 throw new IOException(
                     "The temporary EOS configuration or its metadata still exists.");
+            }
+        }
+
+        private static void CaptureGeneratedEosState(
+            TransactionState transactionState)
+        {
+            string streamingAssetsDirectory = GetAbsoluteAssetPath(
+                "Assets/StreamingAssets");
+            string eosDirectory = GetAbsoluteAssetPath(
+                "Assets/StreamingAssets/EOS");
+            transactionState.TrackGeneratedEosState = true;
+            transactionState.StreamingAssetsDirectoryExisted =
+                Directory.Exists(streamingAssetsDirectory);
+            transactionState.EosDirectoryExisted = Directory.Exists(eosDirectory);
+            transactionState.EosSteamConfigExisted = File.Exists(
+                GetAbsoluteAssetPath(EosSteamConfigAssetPath));
+        }
+
+        private static void CleanupGeneratedEosDirectories(
+            TransactionState transactionState)
+        {
+            string eosDirectory = GetAbsoluteAssetPath(
+                "Assets/StreamingAssets/EOS");
+            if (!transactionState.EosDirectoryExisted &&
+                Directory.Exists(eosDirectory) &&
+                !Directory.EnumerateFileSystemEntries(eosDirectory).Any())
+            {
+                Directory.Delete(eosDirectory);
+                DeleteAssetFileAndMeta(eosDirectory);
+            }
+
+            string streamingAssetsDirectory = GetAbsoluteAssetPath(
+                "Assets/StreamingAssets");
+            if (!transactionState.StreamingAssetsDirectoryExisted &&
+                Directory.Exists(streamingAssetsDirectory) &&
+                !Directory.EnumerateFileSystemEntries(streamingAssetsDirectory).Any())
+            {
+                Directory.Delete(streamingAssetsDirectory);
+                DeleteAssetFileAndMeta(streamingAssetsDirectory);
             }
         }
 

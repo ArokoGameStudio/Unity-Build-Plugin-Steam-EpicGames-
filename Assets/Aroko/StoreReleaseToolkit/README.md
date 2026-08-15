@@ -38,6 +38,10 @@ Unlocks are saved locally before delivery and retried automatically, including p
 
 The produced folder is the handoff artifact. Any storefront delivery work happens outside this package.
 
+## Normal Unity builds
+
+A Windows x64 player build started outside Store Release Toolkit is treated as store-neutral. The toolkit keeps the portable `StoreAchievements` facade available, but excludes the Steam and Epic providers, vendor managed assemblies, native SDK libraries, EOS configuration/bootstrapper files, and `steam_appid.txt` from the output. Temporary validation state is restored after successful, failed, or cancelled builds.
+
 ## CI
 
 Use `StoreReleaseCli.Run` with `-srtAction validate` or `-srtAction build`, plus `-srtProfile`, `-srtVersion`, and optional `-srtReport`.

@@ -16,14 +16,20 @@ namespace Aroko.StoreRelease.Editor.Build
                 ".dll", ".exe", ".json", ".txt", ".config", ".xml"
             };
 
+        private static readonly string[] AllStoreFileTokens =
+        {
+            "steam_api", "steamworks", "steam_appid",
+            "aroko.storerelease.steam", "eossdk",
+            "epic.onlineservices", "com.playeveryware.eos",
+            "aroko.storerelease.epic", "eosbootstrapper",
+            "eos_steam_config.json",
+            EosConfigurationUtility.ProductConfigFileName,
+            EosConfigurationUtility.WindowsConfigFileName
+        };
+
         public static IReadOnlyList<string> FindInactiveStoreArtifacts(
             string outputDirectory, string activeStore)
         {
-            if (!Directory.Exists(outputDirectory))
-            {
-                return new[] { "Build output directory does not exist: " + outputDirectory };
-            }
-
             bool steam = string.Equals(activeStore, "Steam", StringComparison.OrdinalIgnoreCase);
             string[] forbiddenFileTokens = steam
                 ? new[] { "eossdk", "epic.onlineservices", "eosbootstrapper" }
@@ -38,6 +44,47 @@ namespace Aroko.StoreRelease.Editor.Build
                 {
                     "Steamworks", "SteamAPI_Init", "steam_api64"
                 };
+
+            return FindArtifacts(
+                outputDirectory,
+                forbiddenFileTokens,
+                forbiddenContentTokens,
+                allowSteamReferencesInEosOverlay: !steam);
+        }
+
+        public static IReadOnlyList<string> FindAnyStoreArtifacts(
+            string outputDirectory)
+        {
+            return FindArtifacts(
+                outputDirectory,
+                AllStoreFileTokens,
+                new[]
+                {
+                    "Steamworks", "SteamAPI_Init", "steam_api64",
+                    "Epic.OnlineServices", "PlayEveryWare.EpicOnlineServices",
+                    "EOSSDK-Win64-Shipping"
+                },
+                allowSteamReferencesInEosOverlay: false);
+        }
+
+        internal static bool IsAnyStoreArtifactPath(string path)
+        {
+            return AllStoreFileTokens.Any(token =>
+                (path ?? string.Empty).IndexOf(
+                    token,
+                    StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static IReadOnlyList<string> FindArtifacts(
+            string outputDirectory,
+            IReadOnlyList<string> forbiddenFileTokens,
+            IReadOnlyList<string> forbiddenContentTokens,
+            bool allowSteamReferencesInEosOverlay)
+        {
+            if (!Directory.Exists(outputDirectory))
+            {
+                return new[] { "Build output directory does not exist: " + outputDirectory };
+            }
 
             var issues = new List<string>();
             IEnumerable<string> files;
@@ -71,7 +118,7 @@ namespace Aroko.StoreRelease.Editor.Build
                     continue;
                 }
 
-                bool officialEosOverlayBridge = !steam &&
+                bool officialEosOverlayBridge = allowSteamReferencesInEosOverlay &&
                     Path.GetFileName(file).StartsWith(
                         "GfxPluginNativeRender-", StringComparison.OrdinalIgnoreCase);
                 foreach (string token in forbiddenContentTokens)

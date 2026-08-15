@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - Store-free normal builds
+
+- Made direct Unity Windows x64 builds automatically exclude Steamworks, EOS, and both store achievement providers.
+- Added failure-safe temporary EOS validation configuration and native-plugin isolation for normal builds.
+- Added final output validation so Steam/Epic artifacts cannot silently remain in a normal build.
+- Kept the store-neutral `StoreAchievements` facade available in normal builds.
+
 ## 1.0.0 - Portable build-only release
 
 - Added `Aroko.StoreRelease.Runtime.StoreAchievements.Unlock(string)` with persistent pending delivery and automatic retries.

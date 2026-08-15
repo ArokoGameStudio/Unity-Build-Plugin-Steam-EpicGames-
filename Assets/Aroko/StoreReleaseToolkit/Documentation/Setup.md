@@ -31,3 +31,5 @@ The Epic provider uses the launched player's Epic/EOS session. This is player au
 Open **Build**, select the profile and version, confirm the output folder, then run **Validate Configuration** or **Build Windows x64**. The toolkit replaces the selected output folder, temporarily isolates the inactive vendor SDK, and restores editor state afterward.
 
 The resulting folder is the complete toolkit output. Storefront delivery is intentionally outside the package.
+
+A Windows x64 build started directly from Unity, a custom editor button, or another build script is a normal store-neutral build. Both vendor SDKs and store providers are excluded automatically; use the toolkit Build page when Steam or Epic integration is required.

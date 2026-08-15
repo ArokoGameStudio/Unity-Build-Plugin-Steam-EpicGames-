@@ -16,7 +16,7 @@ namespace Aroko.StoreRelease.Editor.Packaging
     public static class AssetStorePackageExporter
     {
         public const string ProductRoot = "Assets/Aroko/StoreReleaseToolkit";
-        public const string PackageVersion = "1.0.0";
+        public const string PackageVersion = "1.0.1";
         private const string TestsRoot = ProductRoot + "/Tests";
         private static readonly string[] RequiredFiles =
         {

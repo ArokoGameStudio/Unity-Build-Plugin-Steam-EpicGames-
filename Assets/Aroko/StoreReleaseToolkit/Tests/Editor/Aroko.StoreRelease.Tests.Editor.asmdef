@@ -1,0 +1,22 @@
+{
+  "name": "Aroko.StoreRelease.Tests.Editor",
+  "rootNamespace": "Aroko.StoreRelease.Tests.Editor",
+  "references": [
+    "Aroko.StoreRelease.Editor",
+    "Aroko.StoreRelease.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
