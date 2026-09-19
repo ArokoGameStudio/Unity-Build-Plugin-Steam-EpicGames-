@@ -4,6 +4,7 @@
 
 - Made direct Unity Windows x64 builds automatically exclude Steamworks, EOS, and both store achievement providers.
 - Added failure-safe temporary EOS validation configuration and native-plugin isolation for normal builds.
+- Hardened Steam builds to detect invalid EOS Sandbox/Deployment IDs, back up the original config, and restore it after the build or recovery.
 - Added final output validation so Steam/Epic artifacts cannot silently remain in a normal build.
 - Kept the store-neutral `StoreAchievements` facade available in normal builds.
 

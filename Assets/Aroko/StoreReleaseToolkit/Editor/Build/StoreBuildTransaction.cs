@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Aroko.StoreRelease.Editor.Configuration;
 using UnityEditor;
 using UnityEngine;
@@ -29,6 +30,8 @@ namespace Aroko.StoreRelease.Editor.Build
         {
             public string OriginalBundleVersion = string.Empty;
             public bool CreatedTemporaryEosWindowsConfig;
+            public bool ReplacedExistingEosWindowsConfig;
+            public string EosWindowsConfigBackupPath = string.Empty;
             public bool TrackGeneratedEosState;
             public bool StreamingAssetsDirectoryExisted;
             public bool EosDirectoryExisted;
@@ -40,6 +43,13 @@ namespace Aroko.StoreRelease.Editor.Build
             "Assets/StreamingAssets/EOS/eos_windows_config.json";
         private const string EosSteamConfigAssetPath =
             "Assets/StreamingAssets/EOS/eos_steam_config.json";
+
+        private static readonly Regex SandboxIdPattern = new Regex(
+            "\\\"SandboxId\\\"\\s*:\\s*\\{\\s*\\\"Value\\\"\\s*:\\s*\\\"(?<value>[^\\\"]*)\\\"",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex DeploymentIdPattern = new Regex(
+            "\\\"DeploymentId\\\"\\s*:\\s*\\\"(?<value>[^\\\"]*)\\\"",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private const string TemporaryEosWindowsConfig =
             "{\n" +
@@ -219,18 +229,65 @@ namespace Aroko.StoreRelease.Editor.Build
         private void EnsureTemporaryEosWindowsConfig()
         {
             string absolutePath = GetEosWindowsConfigAbsolutePath();
-            if (File.Exists(absolutePath))
+            if (IsEosWindowsConfigUsable(absolutePath))
             {
                 return;
             }
 
-            state.CreatedTemporaryEosWindowsConfig = true;
+            if (File.Exists(absolutePath))
+            {
+                string backupPath = GetEosWindowsConfigBackupAbsolutePath();
+                Directory.CreateDirectory(Path.GetDirectoryName(backupPath));
+                File.Copy(absolutePath, backupPath, true);
+                state.ReplacedExistingEosWindowsConfig = true;
+                state.EosWindowsConfigBackupPath = backupPath;
+            }
+            else
+            {
+                state.CreatedTemporaryEosWindowsConfig = true;
+            }
+
             WriteJournal(state);
             Directory.CreateDirectory(Path.GetDirectoryName(absolutePath));
             File.WriteAllText(
                 absolutePath,
                 TemporaryEosWindowsConfig,
                 new UTF8Encoding(false));
+        }
+
+        private static bool IsEosWindowsConfigUsable(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            string json;
+            try
+            {
+                json = File.ReadAllText(path);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+
+            Match sandboxMatch = SandboxIdPattern.Match(json);
+            Match deploymentMatch = DeploymentIdPattern.Match(json);
+            if (!sandboxMatch.Success || !deploymentMatch.Success)
+            {
+                return false;
+            }
+
+            string sandboxId = sandboxMatch.Groups["value"].Value.Trim();
+            string deploymentId = deploymentMatch.Groups["value"].Value.Trim();
+            return !string.IsNullOrWhiteSpace(sandboxId) &&
+                   Guid.TryParse(deploymentId, out Guid deploymentGuid) &&
+                   deploymentGuid != Guid.Empty;
         }
 
         private static void RecoverIfNeeded()
@@ -298,7 +355,20 @@ namespace Aroko.StoreRelease.Editor.Build
                 }
             }
 
-            if (transactionState.CreatedTemporaryEosWindowsConfig)
+            if (transactionState.ReplacedExistingEosWindowsConfig)
+            {
+                try
+                {
+                    RestoreReplacedEosWindowsConfig(transactionState);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new InvalidOperationException(
+                        "Could not restore the original EOS Windows configuration.",
+                        exception));
+                }
+            }
+            else if (transactionState.CreatedTemporaryEosWindowsConfig)
             {
                 try
                 {
@@ -472,6 +542,15 @@ namespace Aroko.StoreRelease.Editor.Build
             return GetAbsoluteAssetPath(EosWindowsConfigAssetPath);
         }
 
+        private static string GetEosWindowsConfigBackupAbsolutePath()
+        {
+            return Path.Combine(
+                StoreBuildCoordinator.ProjectRoot,
+                "Library",
+                "StoreReleaseToolkit",
+                "steam-eos-windows-config-" + Guid.NewGuid().ToString("N") + ".json");
+        }
+
         private static string GetAbsoluteAssetPath(string assetPath)
         {
             return Path.GetFullPath(Path.Combine(
@@ -483,6 +562,23 @@ namespace Aroko.StoreRelease.Editor.Build
         private static void DeleteTemporaryEosWindowsConfig()
         {
             DeleteAssetFileAndMeta(GetEosWindowsConfigAbsolutePath());
+        }
+
+        private static void RestoreReplacedEosWindowsConfig(
+            TransactionState transactionState)
+        {
+            if (string.IsNullOrWhiteSpace(transactionState.EosWindowsConfigBackupPath) ||
+                !File.Exists(transactionState.EosWindowsConfigBackupPath))
+            {
+                throw new FileNotFoundException(
+                    "The original EOS Windows configuration backup is missing.",
+                    transactionState.EosWindowsConfigBackupPath);
+            }
+
+            string absolutePath = GetEosWindowsConfigAbsolutePath();
+            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath));
+            File.Copy(transactionState.EosWindowsConfigBackupPath, absolutePath, true);
+            File.Delete(transactionState.EosWindowsConfigBackupPath);
         }
 
         private static void DeleteAssetFileAndMeta(string path)
