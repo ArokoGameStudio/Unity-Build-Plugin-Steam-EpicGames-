@@ -22,6 +22,7 @@ namespace Aroko.StoreRelease.Runtime.Epic
         private string receiptNamespace = "epic-v1-uninitialized";
 
         public string ReceiptNamespace => receiptNamespace;
+        public string LegacyReceiptNamespace => string.Empty;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -83,7 +84,7 @@ namespace Aroko.StoreRelease.Runtime.Epic
         {
             if (ready)
             {
-                onCompleted?.Invoke(true, Array.Empty<string>());
+                onCompleted?.Invoke(true, null);
                 return;
             }
 
@@ -244,9 +245,13 @@ namespace Aroko.StoreRelease.Runtime.Epic
                 (ref OnQueryPlayerAchievementsCompleteCallbackInfo data) =>
                 {
                     var unlocked = new List<string>();
+                    IReadOnlyCollection<string> snapshot = null;
                     if (data.ResultCode == Result.Success)
                     {
-                        CollectUnlockedAchievements(unlocked);
+                        if (CollectUnlockedAchievements(unlocked))
+                        {
+                            snapshot = unlocked;
+                        }
                     }
                     else
                     {
@@ -256,7 +261,7 @@ namespace Aroko.StoreRelease.Runtime.Epic
                             "); pending unlocks will still be attempted.");
                     }
 
-                    CompleteInitialization(true, unlocked);
+                    CompleteInitialization(true, snapshot);
                 });
         }
 
@@ -290,10 +295,10 @@ namespace Aroko.StoreRelease.Runtime.Epic
             initializationCallback = null;
             callback?.Invoke(
                 succeeded,
-                unlocked ?? Array.Empty<string>());
+                unlocked);
         }
 
-        private void CollectUnlockedAchievements(List<string> unlocked)
+        private bool CollectUnlockedAchievements(List<string> unlocked)
         {
             var countOptions = new GetPlayerAchievementCountOptions
             {
@@ -312,13 +317,18 @@ namespace Aroko.StoreRelease.Runtime.Epic
                 Result result = achievements.CopyPlayerAchievementByIndex(
                     ref copyOptions,
                     out PlayerAchievement? achievement);
-                if (result == Result.Success &&
-                    achievement.HasValue &&
-                    achievement.Value.Progress >= 1.0)
+                if (result != Result.Success || !achievement.HasValue)
+                {
+                    return false;
+                }
+
+                if (achievement.Value.Progress >= 1.0)
                 {
                     unlocked.Add(achievement.Value.AchievementId);
                 }
             }
+
+            return true;
         }
     }
 }

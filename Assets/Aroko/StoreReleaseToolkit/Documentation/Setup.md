@@ -24,6 +24,8 @@ The dashboard creates project-local settings and EOS template files from scratch
 
 Define achievement IDs in your game code and configure the same IDs in Steam and Epic. Call `Aroko.StoreRelease.Runtime.StoreAchievements.Unlock(id)`. Unlock requests persist locally and retry through the provider selected for the current build.
 
+When a full game reset clears local progression, call `Aroko.StoreRelease.Runtime.StoreAchievements.ClearPendingForFullGameReset()` too. This clears the toolkit's local earned queue while retaining store receipts; the store's achievement state is managed separately.
+
 The Epic provider uses the launched player's Epic/EOS session. This is player authentication for runtime services, not developer-account login or build uploading.
 
 ## Build

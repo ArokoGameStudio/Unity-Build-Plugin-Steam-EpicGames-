@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 - Store achievement receipt reconciliation
+
+- Reconcile saved delivery receipts with the current Steam/Epic achievement snapshot so store-side resets do not block legitimate unlocks or replay old game progress.
+- Added a runtime reset hook for games that clear all local progression.
+- Added focused regression tests for stale receipts, full resets, and offline unlock delivery.
+
 ## 1.0.1 - Store-free normal builds
 
 - Made direct Unity Windows x64 builds automatically exclude Steamworks, EOS, and both store achievement providers.

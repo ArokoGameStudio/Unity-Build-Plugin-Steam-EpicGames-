@@ -42,6 +42,16 @@ namespace Aroko.StoreRelease.Runtime
             FlushPending();
         }
 
+        /// <summary>
+        /// Clears locally earned progress when a game performs a full save reset.
+        /// Confirmed receipts remain and are reconciled against the store at startup.
+        /// </summary>
+        public static void ClearPendingForFullGameReset()
+        {
+            Ledger.ClearEarned();
+            InFlight.Clear();
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntimeState()
         {
@@ -136,17 +146,11 @@ namespace Aroko.StoreRelease.Runtime
 
             if (unlockedAchievementIds != null)
             {
-                foreach (string achievementId in unlockedAchievementIds)
-                {
-                    string normalized = NormalizeAchievementId(achievementId);
-                    if (normalized.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    Ledger.RecordEarned(normalized);
-                    Ledger.MarkDelivered(provider.ReceiptNamespace, normalized);
-                }
+                Ledger.ReconcileDelivered(
+                    provider.ReceiptNamespace,
+                    unlockedAchievementIds.Select(NormalizeAchievementId)
+                        .Where(id => id.Length > 0),
+                    provider.LegacyReceiptNamespace);
             }
 
             providerReady = true;
@@ -217,7 +221,10 @@ namespace Aroko.StoreRelease.Runtime
     internal interface IStoreAchievementProvider
     {
         string ReceiptNamespace { get; }
+        string LegacyReceiptNamespace { get; }
 
+        // A non-null collection is the complete current store snapshot.
+        // Null means the snapshot is unavailable and existing receipts are retained.
         void Initialize(
             Action<bool, IReadOnlyCollection<string>> onCompleted);
 
@@ -310,6 +317,44 @@ namespace Aroko.StoreRelease.Runtime
         {
             HashSet<string> delivered = ReadSet(ReceiptKey(receiptNamespace));
             return ReadSet(EarnedKey).Where(id => !delivered.Contains(id));
+        }
+
+        public void ReconcileDelivered(
+            string receiptNamespace,
+            IEnumerable<string> unlockedAchievementIds,
+            string legacyReceiptNamespace = null)
+        {
+            HashSet<string> delivered = ReadSet(ReceiptKey(receiptNamespace));
+            var current = new HashSet<string>(
+                unlockedAchievementIds, StringComparer.Ordinal);
+            delivered.ExceptWith(current);
+            if (!string.IsNullOrWhiteSpace(legacyReceiptNamespace))
+            {
+                delivered.UnionWith(ReadSet(ReceiptKey(legacyReceiptNamespace)));
+            }
+
+            // Remove historical requests whose old delivery receipt is contradicted
+            // by the authoritative store snapshot. Current game progress can earn
+            // those IDs again after the game state is loaded.
+            HashSet<string> earned = ReadSet(EarnedKey);
+            if (earned.RemoveWhere(id => delivered.Contains(id)) > 0)
+            {
+                WriteSet(EarnedKey, earned);
+            }
+
+            WriteSet(ReceiptKey(receiptNamespace), current);
+        }
+
+        public void ClearEarned()
+        {
+            HashSet<string> earned = ReadSet(EarnedKey);
+            if (earned.Count == 0)
+            {
+                return;
+            }
+
+            earned.Clear();
+            WriteSet(EarnedKey, earned);
         }
 
         private string EarnedKey => keyPrefix + ".earned";

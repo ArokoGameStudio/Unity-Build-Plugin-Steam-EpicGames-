@@ -26,7 +26,7 @@ public static class GameAchievementIds
 StoreAchievements.Unlock(GameAchievementIds.FirstWin);
 ```
 
-Unlocks are saved locally before delivery and retried automatically, including provider startup failures. Receipts are isolated by Steam App ID or Epic deployment. A Steam build uses the Steam provider; an Epic build uses the EOS provider. Epic player authentication at game runtime is separate from developer-account authentication, which the toolkit never performs.
+Unlocks are saved locally before delivery and retried automatically, including provider startup failures. Receipts are isolated by Steam account and App ID or Epic deployment, then reconciled against the current store state when the provider starts. If a game clears all local progress, it can clear the toolkit's pending earned IDs too with `StoreAchievements.ClearPendingForFullGameReset()`. A Steam build uses the Steam provider; an Epic build uses the EOS provider. Epic player authentication at game runtime is separate from developer-account authentication, which the toolkit never performs.
 
 ## What remains store-specific
 

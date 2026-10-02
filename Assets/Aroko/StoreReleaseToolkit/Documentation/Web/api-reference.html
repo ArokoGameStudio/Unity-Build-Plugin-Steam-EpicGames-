@@ -14,6 +14,7 @@
     <pre><code>using Aroko.StoreRelease.Runtime;
 StoreAchievements.Unlock(GameAchievementIds.FirstWin);</code></pre>
     <p>The selected build supplies the matching provider. Unlocks are persisted before delivery, provider startup and delivery are retried automatically, and receipts are isolated per store environment.</p>
+    <p>When a game clears local progression, call <code>StoreAchievements.ClearPendingForFullGameReset()</code> as part of that reset. The toolkit reconciles saved receipts with the current store state when the provider starts.</p>
   </header>
 
   <section class="doc-section" id="achievements">

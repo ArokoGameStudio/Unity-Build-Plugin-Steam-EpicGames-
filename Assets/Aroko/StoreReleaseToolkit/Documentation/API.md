@@ -15,7 +15,15 @@ public static class GameAchievementIds
 StoreAchievements.Unlock(GameAchievementIds.FirstWin);
 ```
 
-Achievement IDs remain project-owned and should match the IDs configured in both store portals. The call records the unlock locally first. Pending unlocks persist between sessions and retry provider initialization and delivery automatically. Delivery receipts are isolated by Steam App ID or Epic product/sandbox/deployment, so testing one environment cannot suppress a later live unlock.
+Achievement IDs remain project-owned and should match the IDs configured in both store portals. The call records the unlock locally first. Pending unlocks persist between sessions and retry provider initialization and delivery automatically. Delivery receipts are isolated by Steam account and App ID or Epic product/sandbox/deployment. Provider startup reconciles saved receipts with the current store state so stale receipts cannot block a legitimate unlock.
+
+When a full game reset clears local progression, clear the toolkit's local earned queue at the same time:
+
+```csharp
+StoreAchievements.ClearPendingForFullGameReset();
+```
+
+The store's own achievement state is not reset by this call.
 
 Steam and Epic providers are optional assemblies. They compile only when their vendor SDK package is installed, and their runtime implementation is included only in the matching store build.
 

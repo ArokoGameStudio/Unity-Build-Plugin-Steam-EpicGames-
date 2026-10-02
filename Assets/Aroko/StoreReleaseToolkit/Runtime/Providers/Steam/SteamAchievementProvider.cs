@@ -23,10 +23,12 @@ namespace Aroko.StoreRelease.Runtime.Steam
         private bool ownsSteamApi;
         private bool statsReady;
         private string receiptNamespace = "steam-v1-uninitialized";
+        private string legacyReceiptNamespace = string.Empty;
         private Callback<UserStatsStored_t> userStatsStoredCallback;
         private PendingSubmission activeSubmission;
 
         public string ReceiptNamespace => receiptNamespace;
+        public string LegacyReceiptNamespace => legacyReceiptNamespace;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -46,7 +48,9 @@ namespace Aroko.StoreRelease.Runtime.Steam
         {
             if (apiInitialized && statsReady)
             {
-                onCompleted?.Invoke(true, Array.Empty<string>());
+                bool succeeded = TryReadUnlockedAchievements(out List<string> unlocked);
+                statsReady = succeeded;
+                onCompleted?.Invoke(succeeded, unlocked);
                 return;
             }
 
@@ -69,7 +73,11 @@ namespace Aroko.StoreRelease.Runtime.Steam
             }
 
             AppId_t activeAppId = AppId_t.Invalid;
-            if (TryGetInitializedAppId(out activeAppId))
+            if (apiInitialized)
+            {
+                activeAppId = SteamUtils.GetAppID();
+            }
+            else if (TryGetInitializedAppId(out activeAppId))
             {
                 apiInitialized = true;
                 ownsSteamApi = false;
@@ -112,7 +120,18 @@ namespace Aroko.StoreRelease.Runtime.Steam
                 return;
             }
 
-            receiptNamespace = "steam-v1-app-" + activeAppId.m_AppId;
+            ulong activeSteamId = SteamUser.GetSteamID().m_SteamID;
+            if (activeSteamId == 0)
+            {
+                Debug.LogWarning(
+                    "Steam did not provide a logged-in user ID; achievements will remain queued.");
+                onCompleted?.Invoke(false, null);
+                return;
+            }
+
+            legacyReceiptNamespace = "steam-v1-app-" + activeAppId.m_AppId;
+            receiptNamespace = "steam-v2-app-" + activeAppId.m_AppId +
+                               "-user-" + activeSteamId;
             if (TryReadBuildAppId(out AppId_t expectedAppId) &&
                 activeAppId != expectedAppId)
             {
@@ -121,10 +140,48 @@ namespace Aroko.StoreRelease.Runtime.Steam
                     ", but this build expects " + expectedAppId + ".");
             }
 
-            userStatsStoredCallback =
-                Callback<UserStatsStored_t>.Create(OnUserStatsStored);
+            if (!TryReadUnlockedAchievements(out List<string> unlockedAchievements))
+            {
+                Debug.LogWarning(
+                    "Steam achievement state is not ready; initialization will be retried.");
+                onCompleted?.Invoke(false, null);
+                return;
+            }
+
+            if (userStatsStoredCallback == null)
+            {
+                userStatsStoredCallback =
+                    Callback<UserStatsStored_t>.Create(OnUserStatsStored);
+            }
             statsReady = true;
-            onCompleted?.Invoke(true, Array.Empty<string>());
+            onCompleted?.Invoke(true, unlockedAchievements);
+        }
+
+        private static bool TryReadUnlockedAchievements(out List<string> unlocked)
+        {
+            unlocked = new List<string>();
+            uint count = SteamUserStats.GetNumAchievements();
+            if (count == 0)
+            {
+                return false;
+            }
+
+            for (uint i = 0; i < count; i++)
+            {
+                string id = SteamUserStats.GetAchievementName(i);
+                if (string.IsNullOrWhiteSpace(id) ||
+                    !SteamUserStats.GetAchievement(id, out bool isUnlocked))
+                {
+                    return false;
+                }
+
+                if (isUnlocked)
+                {
+                    unlocked.Add(id);
+                }
+            }
+
+            return true;
         }
 
         public void Submit(string achievementId, Action<bool> onCompleted)
@@ -191,6 +248,11 @@ namespace Aroko.StoreRelease.Runtime.Steam
                     "Steam rejected achievement '" +
                     activeSubmission.AchievementId + "' (" +
                     result.m_eResult + "); it will be retried.");
+            }
+            else
+            {
+                Debug.Log("Steam stored achievement: " +
+                          activeSubmission.AchievementId + ".");
             }
 
             CompleteActiveSubmission(succeeded);
